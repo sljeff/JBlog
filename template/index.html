@@ -4,40 +4,31 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>{{ pageTitle }}</title>
-    <link rel="stylesheet" type="text/css" href="main.css">
+    <link rel="stylesheet" type="text/css" href="http://www.kindjeff.com/css/typo.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/main.css">
     <link rel="shortcut icon" href="{{ faviconLink }}" type="image/vnd.microsoft.icon">
     <link rel="icon" href="{{ faviconLink }}" type="image/vnd.microsoft.icon">
 </head>
 <body>
 <div id="firstDiv">
-    <div id="headDiv">
-        <img id="headPic" src="{{ headPicLink }}">
-    </div>
-    <div id="blogName">{{ blogName }}</div>
+    <img id="headPic" src="{{ headPicLink }}">
+    <div id="blogName"><a href="/">{{ blogName }}</a></div>
     <div id="fAdd1"></div>
     <div id="category">
         <div class="categoryTitle">分类</div>
         <div class="list">
-            <ul>
-                {% for item in categories %}
-                    <li>
-                        <a href="{{ escape(item['link']) }}">{{ escape(item['name']) }}</a>
-                    </li>
-                {% end %}
-            </ul>
+            {% for item in categories %}
+                <a href="{{ escape(item[0]) }}">{{ escape(item[1]) }}</a>
+            {% end %}
         </div>
     </div>
     <div id="fAdd2"></div>
     <div id="date">
         <div class="categoryTitle">日期归档</div>
         <div class="list">
-            <ul>
-                {% for item in dates %}
-                    <li>
-                        <a href="{{ escape(item['link']) }}">{{ escape(item['name']) }}</a>
-                    </li>
-                {% end %}
-            </ul>
+            {% for item in dates %}
+                <a href="{{ escape(item[0]) }}">{{ escape(item[1]) }}</a>
+            {% end %}
         </div>
     </div>
     <div id="fAdd3"></div>
@@ -56,5 +47,5 @@
 <div id="mainAdd3"></div>
 <div id="mainAdd4"></div>
 </body>
-<script type="text/javascript" src="main.js"></script>
+<script type="text/javascript" src="/static/js/main.js"></script>
 </html>

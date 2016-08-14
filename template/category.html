@@ -5,10 +5,16 @@
     <ul>
         {% for item in archives %}
             <li>
-                <div class="overviewTitle">{{ item['title'] }}</div>
+                <h1 class="overviewTitle">{{ item['title'] }}</h1>
                 <div class="overviewContent">{{ item['overview'] }}</div>
             </li>
         {% end %}
     </ul>
+    {% if preLink %}
+    <a href="{{ preLink }}" id="prePage">上一页</a>
+    {% end %}
+    {% if nextLink %}
+    <a href="{{ nextLink }}" id="nextPage">下一页</a>
+    {% end %}
 </div>
 {% end %}

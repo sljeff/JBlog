@@ -1,4 +1,5 @@
 window.onload = function(){
+  document.body.className = 'typo';
   var leftDiv = document.getElementById('firstDiv');
   var critileTop = leftDiv.offsetHeight - window.innerHeight;
   if(window.innerWidth > 600){
