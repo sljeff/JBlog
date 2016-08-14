@@ -1,0 +1,18 @@
+{% extends index.html %}
+
+{% block main %}
+<div class="article">
+    <div id="mainTitle">{{ escape(mainTitle) }}</div>
+    <div id="content">{{ content }}</div>
+    <div id="prePage">
+        {% if preLink %}
+            <a href="{{ preLink }}">上一页</a>
+        {% end %}
+    </div>
+    <div id="nextPage">
+        {% if nextLink %}
+            <a href="{{ nextLink }}">下一页</a>
+        {% end %}
+    </div>
+</div>
+{% end %}
