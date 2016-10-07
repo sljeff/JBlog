@@ -90,3 +90,5 @@ ENV/
 /.idea
 /test
 JBlog.txt
+test.py
+test.db
