@@ -59,17 +59,17 @@ class DB:
         """
         cdt_arr = []
         cdt_value_arr = []
-        get_symbol = lambda tp: tp[1]
+        get_symbol = lambda t: t[1]
         inner = ' AND '
         if isinstance(conditions, dict):
             conditions = [x for x in conditions.items()]
-            get_symbol = lambda tp: '='
+            get_symbol = lambda t: '='
             inner = ','
         for tp in conditions:
             if ' ' in tp[0]:
                 # SQL injection
                 return None, None
-            cdt_arr.append(tp[0] + ' ' + get_symbol(tp) + ' ' + '?')
+            cdt_arr.append('{0} {1} ?'.format(tp[0], get_symbol(tp)))
             cdt_value_arr.append(tp[-1])
         cdt_str = inner.join(cdt_arr)
         return cdt_str, tuple(cdt_value_arr)
@@ -93,19 +93,23 @@ class DB:
             await self._do(conn.execute, sql, v_tuple)
             await self._commit(conn)
             result = True
-        except BaseException as e:
+        except:
             await self._rollback(conn)
         finally:
             await self._close(conn)
             return result
 
-    async def select(self, columns, table, conditions):
+    async def select(self, columns, table, conditions, order_by=None, desc=False, limit=None, offset=None):
         """
         SELECT columns FROM table WHERE condition AND condition
         note that: columns should not be a string!
         :param tuple|list columns: if columns is (), [] or None, it will be translated to '*'.
         :param str table: table to select
-        :param list[tuple[str]] conditions: list of 3-tuple; ex: [('author', '=', 'jeff'), ('time', '<', '20160501')]
+        :param list[tuple[str]] conditions: list of 3-tuple; ex: [('author', '=', 'jeff'), ('time', '<', datetime.now())]
+        :param str order_by: order by which column
+        :param bool desc: desc
+        :param int limit: limit number
+        :param int offset: offset number
         :rtype: list[sqlite3.Row]
         """
         result = None
@@ -118,13 +122,21 @@ class DB:
             sql = 'SELECT {} FROM {}'.format(sel_str, table)
         else:
             sql = 'SELECT {} FROM {} WHERE {}'.format(sel_str, table, cdt_str)
+        if order_by is not None:
+            sql += ' ORDER BY {}'.format(order_by)
+        if desc:
+            sql += ' DESC'
+        if limit is not None:
+            sql += ' LIMIT {}'.format(limit)
+        if offset is not None:
+            sql += ' OFFSET {}'.format(offset)
 
         conn = await self._connect()
         try:
             cursor = conn.cursor()
             await self._do(cursor.execute, sql, cdt_value)
             result = await self._do(cursor.fetchall)
-        except BaseException as e:
+        except:
             await self._rollback(conn)
         finally:
             await self._close(conn)
@@ -258,36 +270,43 @@ class BlogDB(DB):
         result = await self.select(self.selection, self.table_name['articles'], [('slug', '=', slug)])
         return result[0]
 
-    async def select_articles(self, conditions):
+    async def select_articles(self, conditions, limit=20, offset=None):
         """
         :param list[tuple[str]] conditions: list of 3-tuple; ex: [('author', '=', 'jeff'), ('time', '<', '20160501')]
+        :param int limit: limit number
+        :param int offset:offset number
         :rtype: list[sqlite3.Row]
         """
-        result = await self.select(self.selection, self.table_name['articles'], conditions)
+        result = await self.select(self.selection, self.table_name['articles'], conditions,
+                                   order_by='time', desc=True, limit=limit, offset=offset)
         return result
 
-    async def select_articles_by_time(self, begin=None, end=None):
+    async def select_articles_by_time(self, begin=None, end=None, limit=20, offset=None):
         """
         :param datetime.datetime begin: begin *begin*
         :param datetime.datetime end: to *end*
+        :param int limit: limit number
+        :param int offset: offset number
         :rtype: list[sqlite3.Row]
         """
         if begin is None:
             begin = datetime.datetime.min
         if end is None:
             end = datetime.datetime.max
-        result = await self.select_articles([('time', '>', begin), ('time', '<', end)])
+        result = await self.select_articles([('time', '>', begin), ('time', '<', end)], limit, offset)
         return result
 
-    async def select_articles_by_category(self, cat_slug):
+    async def select_articles_by_category(self, cat_slug, limit, page_num=0):
         """
         :param str cat_slug: slug of category
+        :param int limit: limit number
+        :param int page_num: page number
         :rtype: list[sqlite3.Row]
         """
-        rows = await self.select_articles([('slug', '=', cat_slug)])
+        rows = await self.select(['id'], self.table_name['category'], [('slug', '=', cat_slug)])
         row = rows[0]
         cat_id = row['id']
-        result = await self.select_articles([('cat_id', '=', cat_id)])
+        result = await self.select_articles([('cat_id', '=', cat_id)], limit, limit * page_num)
         return result
 
     async def init(self):
@@ -295,12 +314,12 @@ class BlogDB(DB):
         :rtype: bool
         """
         sqls = []
-        sql_create_articles = 'CREATE TABLE {} '.format(self.table_name['article']) +\
-                              '(id INT PRIMARY KEY NOT NULL AUTOINCREMENT, slug CHAR(100) NOT NULL, cat_id INT NOT NULL, ' +\
-                              'title NCHAR(100) NOT NULL, md_content TEXT NOT NULL, html_content TEXT NOT NULL, ' +\
+        sql_create_articles = 'CREATE TABLE {} '.format(self.table_name['article']) + \
+                              '(id INT PRIMARY KEY AUTOINCREMENT, slug CHAR(100) NOT NULL, cat_id INT NOT NULL, ' + \
+                              'title NCHAR(100) NOT NULL, md_content TEXT NOT NULL, html_content TEXT NOT NULL, ' + \
                               'author NCHAR(30) NOT NULL, time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)'
-        sql_create_category = 'CREATE TABLE {} '.format(self.table_name['category']) +\
-                              '(id INT PRIMARY KEY NOT NULL AUTOINCREMENT, slug CHAR(50) NOT NULL, name NCHAR(50) NOT NULL)'
+        sql_create_category = 'CREATE TABLE {} '.format(self.table_name['category']) + \
+                              '(id INT PRIMARY KEY AUTOINCREMENT, slug CHAR(50) NOT NULL, name NCHAR(50) NOT NULL)'
         sqls.append(sql_create_articles)
         sqls.append(sql_create_category)
 
