@@ -253,10 +253,10 @@ class BlogDB(DB):
     async def select_article(self, slug):
         """
         :param str slug: slug of the article
-        :rtype: list[sqlite3.Row]
+        :rtype: sqlite3.Row
         """
         result = await self.select(self.selection, self.table_name['articles'], [('slug', '=', slug)])
-        return result
+        return result[0]
 
     async def select_articles(self, conditions):
         """
@@ -284,7 +284,10 @@ class BlogDB(DB):
         :param str cat_slug: slug of category
         :rtype: list[sqlite3.Row]
         """
-        result = await self.select_articles([('slug', '=', cat_slug)])
+        rows = await self.select_articles([('slug', '=', cat_slug)])
+        row = rows[0]
+        cat_id = row['id']
+        result = await self.select_articles([('cat_id', '=', cat_id)])
         return result
 
     async def init(self):
