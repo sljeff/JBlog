@@ -198,7 +198,7 @@ class BlogDB(DB):
 
     def __init__(self, loop, dbpath='blog.db', executor=None):
         super(BlogDB, self).__init__(loop, dbpath, executor)
-        self.table_name = {'articles': 'articles'}
+        self.table_name = {'articles': 'articles', 'category': 'cat'}
         self.selection = []
 
     async def add_article(self, slug, title, md_content, html_content, author, time=None):
@@ -279,18 +279,29 @@ class BlogDB(DB):
         result = await self.select_articles([('time', '>', begin), ('time', '<', end)])
         return result
 
+    async def select_articles_by_category(self, cat_slug):
+        """
+        :param str cat_slug: slug of category
+        :rtype: list[sqlite3.Row]
+        """
+        result = await self.select_articles([('slug', '=', cat_slug)])
+        return result
+
     async def init(self):
         """
         :rtype: bool
         """
         sqls = []
-        sql_create_articles = 'CREATE TABLE {} '.format(self.table_name['article']) + \
-                              '(id INT PRIMARY KEY NOT NULL AUTOINCREMENT, slug CHAR(100) NOT NULL, ' + \
-                              'title NCHAR(100) NOT NULL, md_content TEXT NOT NULL, html_content TEXT NOT NULL, ' + \
+        sql_create_articles = 'CREATE TABLE {} '.format(self.table_name['article']) +\
+                              '(id INT PRIMARY KEY NOT NULL AUTOINCREMENT, slug CHAR(100) NOT NULL, cat_id INT NOT NULL, ' +\
+                              'title NCHAR(100) NOT NULL, md_content TEXT NOT NULL, html_content TEXT NOT NULL, ' +\
                               'author NCHAR(30) NOT NULL, time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)'
+        sql_create_category = 'CREATE TABLE {} '.format(self.table_name['category']) +\
+                              '(id INT PRIMARY KEY NOT NULL AUTOINCREMENT, slug CHAR(50) NOT NULL, name NCHAR(50) NOT NULL)'
+        sqls.append(sql_create_articles)
+        sqls.append(sql_create_category)
 
         result = False
-        sqls.append(sql_create_articles)
         for sql in sqls:
             conn = await self._connect()
             try:
