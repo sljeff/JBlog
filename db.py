@@ -265,10 +265,12 @@ class BlogDB(DB):
     async def select_article(self, slug):
         """
         :param str slug: slug of the article
-        :rtype: sqlite3.Row
+        :rtype: sqlite3.Row|None
         """
         result = await self.select(self.selection, self.table_name['articles'], [('slug', '=', slug)])
-        return result[0]
+        if len(result) != 0:
+            return result[0]
+        return None
 
     async def select_articles(self, conditions, limit=20, offset=None):
         """
@@ -281,31 +283,29 @@ class BlogDB(DB):
                                    order_by='time', desc=True, limit=limit, offset=offset)
         return result
 
-    async def select_articles_by_time(self, begin=None, end=None, limit=20, offset=None):
+    async def select_articles_by_time(self, begin=None, end=None, limit=20, page_num=0):
         """
         :param datetime.datetime begin: begin *begin*
         :param datetime.datetime end: to *end*
         :param int limit: limit number
-        :param int offset: offset number
+        :param int page_num: page number
         :rtype: list[sqlite3.Row]
         """
-        if begin is None:
-            begin = datetime.datetime.min
-        if end is None:
-            end = datetime.datetime.max
-        result = await self.select_articles([('time', '>', begin), ('time', '<', end)], limit, offset)
+        conditions = []
+        if begin is not None:
+            conditions.append(('time', '>', begin))
+        if end is not None:
+            conditions.append(('time', '<', end))
+        result = await self.select_articles(conditions, limit, limit * page_num)
         return result
 
-    async def select_articles_by_category(self, cat_slug, limit, page_num=0):
+    async def select_articles_by_category(self, cat_id, limit, page_num=0):
         """
-        :param str cat_slug: slug of category
+        :param int cat_id: id of category
         :param int limit: limit number
         :param int page_num: page number
         :rtype: list[sqlite3.Row]
         """
-        rows = await self.select(['id'], self.table_name['category'], [('slug', '=', cat_slug)])
-        row = rows[0]
-        cat_id = row['id']
         result = await self.select_articles([('cat_id', '=', cat_id)], limit, limit * page_num)
         return result
 
