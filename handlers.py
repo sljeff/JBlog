@@ -1,6 +1,8 @@
 import datetime
 import tornado.web
 import db
+import os
+import markdown2
 
 
 def get_overview(whole_article):
@@ -84,3 +86,26 @@ class TimeHandler(BaseHandler):
             'pageTitle': self.application.get_site_title(page_title)
         }
         self.render('category.html', **category_options, **self.application.opts)
+
+
+class AddHandler(BaseHandler):
+    async def post(self):
+        slug = self.get_body_arguments('slug')[0]  # type: str
+        md_file_name = os.path.join('md', slug.strip() + '.md')
+        if not os.path.isfile(md_file_name):
+            self.write('fail')
+            return
+        with open(md_file_name, 'r') as f:
+            md_content = await self.application.loop.run_in_executor(None, f.read)
+            html_content = markdown2.markdown(md_content)
+        try:
+            title = self.get_body_arguments('title')[0]
+            author = self.get_body_arguments('author')[0]
+            time = datetime.datetime.now()
+        except:
+            self.write('fail')
+            return
+
+        d = db.BlogDB(self.application.loop)
+        d.add_article(slug, title, md_content, html_content, author, time)
+        self.write('success')
