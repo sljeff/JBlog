@@ -6,6 +6,12 @@ import tornado.web
 from tornado.options import define, options
 import handlers
 import config
+import init_database
+
+tornado.platform.asyncio.AsyncIOMainLoop().install()
+loop = asyncio.get_event_loop()
+
+init_database.main(loop)
 
 setting = {
     'static_path': os.path.join(os.path.dirname(__file__), "static"),
@@ -17,9 +23,6 @@ define('head_pic_link', os.path.join(setting['static_path'], 'head.jpg'))
 define('blog_name', config.blog_name)
 define('dates', config.dates)
 define('article_num', config.article_num)
-
-tornado.platform.asyncio.AsyncIOMainLoop().install()
-loop = asyncio.get_event_loop()
 
 
 class BlogApplication(tornado.web.Application):

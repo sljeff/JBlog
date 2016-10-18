@@ -93,7 +93,8 @@ class DB:
             await self._do(conn.execute, sql, v_tuple)
             await self._commit(conn)
             result = True
-        except:
+        except Exception as e:
+            print(e)
             await self._rollback(conn)
         finally:
             await self._close(conn)
@@ -136,7 +137,8 @@ class DB:
             cursor = conn.cursor()
             await self._do(cursor.execute, sql, cdt_value)
             result = await self._do(cursor.fetchall)
-        except:
+        except Exception as e:
+            print(sql, '\n', e)
             await self._rollback(conn)
         finally:
             await self._close(conn)
@@ -279,6 +281,8 @@ class BlogDB(DB):
         :param int offset:offset number
         :rtype: list[sqlite3.Row]
         """
+        if offset == 0:
+            offset = None
         result = await self.select(self.selection, self.table_name['articles'], conditions,
                                    order_by='time', desc=True, limit=limit, offset=offset)
         return result
@@ -314,14 +318,11 @@ class BlogDB(DB):
         :rtype: bool
         """
         sqls = []
-        sql_create_articles = 'CREATE TABLE {} '.format(self.table_name['article']) + \
-                              '(id INT PRIMARY KEY AUTOINCREMENT, slug CHAR(100) NOT NULL, cat_id INT NOT NULL, ' + \
+        sql_create_articles = 'CREATE TABLE {} '.format(self.table_name['articles']) + \
+                              '(id INTEGER PRIMARY KEY AUTOINCREMENT, slug CHAR(100) NOT NULL UNIQUE, ' + \
                               'title NCHAR(100) NOT NULL, md_content TEXT NOT NULL, html_content TEXT NOT NULL, ' + \
                               'author NCHAR(30) NOT NULL, time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)'
-        sql_create_category = 'CREATE TABLE {} '.format(self.table_name['category']) + \
-                              '(id INT PRIMARY KEY AUTOINCREMENT, slug CHAR(50) NOT NULL, name NCHAR(50) NOT NULL)'
-        sqls.append(sql_create_articles)
-        sqls.append(sql_create_category)
+        sqls.append(sql_create_articles);print(sqls)
 
         result = False
         for sql in sqls:
@@ -330,7 +331,8 @@ class BlogDB(DB):
                 await self._do(conn.execute(sql))
                 await self._commit(conn)
                 result = True
-            except:
+            except Exception as e:
+                print(e)
                 await self._rollback(conn)
             finally:
                 await self._close(conn)

@@ -3,7 +3,6 @@ import tornado.web
 import db
 import os
 import markdown2
-from functools import lru_cache
 
 
 def get_overview(whole_article):
@@ -11,8 +10,11 @@ def get_overview(whole_article):
     :param str whole_article: article
     :rtype: str
     """
-    end_index = whole_article.index('</p>', 200) + 4
-    return whole_article[0:end_index]
+    try:
+        end_index = whole_article.index('</p>', 200) + 4
+        return whole_article[0:end_index]
+    except ValueError:
+        return whole_article
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -51,7 +53,7 @@ class TimeHandler(BaseHandler):
             for row in rows:
                 title = row['title']
                 overview = get_overview(row['html_content'])
-                archives.append({'title': title, 'overview': overview})
+                archives.append({'title': title, 'overview': overview, 'slug': row['slug']})
             next_link = page_num + 1 if len(rows) >= 20 else None
         page_title = '{0} to {1}'.format(str(begin), str(end)) if begin or end else None
         category_options = {
@@ -65,7 +67,7 @@ class TimeHandler(BaseHandler):
 
 class AddHandler(BaseHandler):
     def get(self):
-        self.render('add.html', cat=self.application.opts['categories'])
+        self.render('add.html')
     async def post(self):
         slug = self.get_body_arguments('slug')[0]  # type: str
         md_file_name = os.path.join('md', slug.strip() + '.md')
@@ -88,4 +90,4 @@ class AddHandler(BaseHandler):
         if result:
             self.write('success')
         else:
-            self.write('fail')
+            self.write('add fail')

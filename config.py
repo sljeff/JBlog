@@ -48,4 +48,4 @@ while from_datetime < to_datetime:
     dates.append((link, name_start+' 至 '+name_end))
 
 # get article_num
-article_num = DEFAULT['article_num']
+article_num = int(DEFAULT['article_num'])

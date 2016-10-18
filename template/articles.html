@@ -2,14 +2,14 @@
 
 {% block main %}
 <div id="archives">
-    <ul>
+    <div id="article">
         {% for item in archives %}
-            <li>
-                <h1 class="overviewTitle">{{ item['title'] }}</h1>
-                <div class="overviewContent">{{ item['overview'] }}</div>
-            </li>
+            <div>
+                <h1 class="overviewTitle"><a href="/a/{{ item['slug'] }}">{{ item['title'] }}</a></h1>
+                <div class="overviewContent">{% raw item['overview'] %}</div>
+            </div>
         {% end %}
-    </ul>
+    </div>
     {% if preLink %}
     <a href="{{ preLink }}" id="prePage">上一页</a>
     {% end %}
