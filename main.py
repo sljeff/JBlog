@@ -15,7 +15,6 @@ setting = {
 define('favicon_link', os.path.join(setting['static_path'], 'favicon.ico'))
 define('head_pic_link', os.path.join(setting['static_path'], 'head.jpg'))
 define('blog_name', config.blog_name)
-define('categories', config.categories)
 define('dates', config.dates)
 define('article_num', config.article_num)
 
@@ -32,18 +31,14 @@ class BlogApplication(tornado.web.Application):
             'faviconLink': options.favicon_link,
             'headPicLink': options.head_pic_link,
             'blogName': options.blog_name,
-            'categories': options.categories,
             'dates': options.dates
         }
-        self.get_site_title = lambda title: str(title) + ' - ' + self.opts['blogName']
+        self.get_site_title = lambda title: str(title) + ' - ' + self.opts['blogName'] if title else self.opts['blogName']
 
 
 app = BlogApplication([
     (r'/', handlers.TimeHandler),
-    (r'/t/(.*)_to_(.*)', tornado.web.RedirectHandler, dict(url=r'/t/\1_to_\2/0')),
     (r'/t/(.*)_to_(.*)/(.*)', handlers.TimeHandler),
-    (r'/c/(.*)', tornado.web.RedirectHandler, dict(url=r'/c/\1/0')),
-    (r'/c/(.*)/(.*)', handlers.CategoryHandler),
     (r'/a/(.*)', handlers.ArticleHandler),
     (r'/add', handlers.AddHandler),
 ], **setting)

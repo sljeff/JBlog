@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Article</title>
+</head>
+<body>
+<div id="mainDiv">
+    <label for="slug">Slug<input type="text" name="slug" id="slug"></label>
+    <br>
+    <label for="title">Title<input type="text" name="title" id="title"></label>
+    <br>
+    <label for="author">Author<input type="text" name="author" id="author"></label>
+    <br>
+    <label for="cat">Category</label>
+    <button id="btn">Submit</button>
+</div>
+<script src="//cdn.bootcss.com/jquery/3.1.1/jquery.min.js"></script>
+<script>
+    $('#btn').on('click', function () {
+        $.ajax({
+            url: '/add',
+            type: 'POST',
+            data: {
+                slug: $("#slug").val(),
+                title: $("#title").val(),
+                author: $("#author").val()
+            },
+            success: function(data){
+                if(data=='success')
+                    alert('success');
+                else
+                    alert('fail');
+            }
+        })
+    })
+</script>
+</body>
+</html>

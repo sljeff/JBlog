@@ -8,8 +8,6 @@ config.read('blog.ini', encoding='utf-8')
 
 DEFAULT = config['DEFAULT']
 blog_name = DEFAULT.get('blog_name', "No Name Here")
-pre_category_name = DEFAULT.get('category_name', "")    # type: str
-pre_category_links = DEFAULT.get('category_links', "")  # type: str
 from_date = DEFAULT.get('from_date', '201610')
 
 # year and month from config
@@ -46,13 +44,8 @@ while from_datetime < to_datetime:
 
     to_year, to_month = add_month(from_datetime.year, from_datetime.month, -1)
     name_end = '{}年{}月'.format(str(to_year), str(to_month))
-    link += '_to_' + str(from_datetime.timestamp())
+    link += '_to_' + str(from_datetime.timestamp()) + '/0'
     dates.append((link, name_start+' 至 '+name_end))
-
-# get categories
-category_name = [x.strip() for x in pre_category_name.split('|')]
-category_links = ['/c/'+x.strip() for x in pre_category_links.split('|')]
-categories = list(zip(category_links, category_name))
 
 # get article_num
 article_num = DEFAULT['article_num']
