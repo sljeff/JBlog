@@ -7,11 +7,13 @@ from tornado.options import define, options
 import handlers
 import config
 import init_database
+import db
 
 tornado.platform.asyncio.AsyncIOMainLoop().install()
 loop = asyncio.get_event_loop()
 
-init_database.main(loop)
+database = db.BlogDB()
+init_database.main(database)
 
 setting = {
     'static_path': os.path.join(os.path.dirname(__file__), "static"),
@@ -30,13 +32,15 @@ class BlogApplication(tornado.web.Application):
         super(BlogApplication, self).__init__(handlers, default_host, transforms, **settings)
         self.loop = loop
         self.article_num = options.article_num
+        self.database = database
         self.opts = {
             'faviconLink': options.favicon_link,
             'headPicLink': options.head_pic_link,
             'blogName': options.blog_name,
             'dates': options.dates
         }
-        self.get_site_title = lambda title: str(title) + ' - ' + self.opts['blogName'] if title else self.opts['blogName']
+        self.get_site_title = lambda title: str(title) + ' - ' + self.opts['blogName'] if title else self.opts[
+            'blogName']
 
 
 app = BlogApplication([

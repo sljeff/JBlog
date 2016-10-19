@@ -1,6 +1,6 @@
+# coding: utf-8
 import datetime
 import tornado.web
-import db
 import os
 import markdown2
 
@@ -22,9 +22,9 @@ class BaseHandler(tornado.web.RequestHandler):
 
 
 class ArticleHandler(BaseHandler):
-    async def get(self, slug):
-        d = db.BlogDB(self.application.loop)
-        row = await d.select_article(slug)
+    def get(self, slug):
+        d = self.application.database
+        row = d.select_article(slug)
         if row is None:
             row = {'title': '', 'html_content': '', 'author': '', 'time': ''}
         article_options = {
@@ -38,14 +38,14 @@ class ArticleHandler(BaseHandler):
 
 
 class TimeHandler(BaseHandler):
-    async def get(self, begin=None, end=None, page_num=0):
+    def get(self, begin=None, end=None, page_num=0):
         page_num = int(page_num)
         if begin is not None:
             begin = datetime.datetime.fromtimestamp(float(begin))
         if end is not None:
             end = datetime.datetime.fromtimestamp(float(end))
-        d = db.BlogDB(self.application.loop)
-        rows = await d.select_articles_by_time(begin, end, self.application.article_num, page_num)
+        d = self.application.database
+        rows = d.select_articles_by_time(begin, end, self.application.article_num, page_num)
         archives = []
         next_link = None
         pre_link = page_num - 1 if page_num > 0 else None
@@ -68,11 +68,12 @@ class TimeHandler(BaseHandler):
 class AddHandler(BaseHandler):
     def get(self):
         self.render('add.html')
+
     async def post(self):
         slug = self.get_body_arguments('slug')[0]  # type: str
         md_file_name = os.path.join('md', slug.strip() + '.md')
         if not os.path.isfile(md_file_name):
-            self.write('fail')
+            self.write('no such file')
             return
         with open(md_file_name, 'r', encoding='utf-8') as f:
             md_content = await self.application.loop.run_in_executor(None, f.read)
@@ -82,12 +83,16 @@ class AddHandler(BaseHandler):
             author = self.get_body_arguments('author')[0]
             time = datetime.datetime.now()
         except:
-            self.write('fail')
+            self.write('wrong value')
             return
 
-        d = db.BlogDB(self.application.loop)
-        result = await d.add_article(slug, title, md_content, html_content, author, time)
+        d = self.application.database
+        result = await self.application.loop.run_in_executor(None, d.add_article, slug, title, md_content, html_content,
+                                                       author, time)
         if result:
+            # clear cache
+            d.select_article.cache_clear()
+            d.select_articles_by_time.cache_clear()
             self.write('success')
         else:
             self.write('add fail')
