@@ -1,45 +1,15 @@
 # coding: utf-8
 import sqlite3
 import datetime
-from functools import partial
+from functools import lru_cache
 
 
 class DB:
-    def __init__(self, loop, dbpath='blog.db', executor=None):
+    def __init__(self, dbpath='blog.db'):
         """
-        :param asyncio.AbstractEventLoop loop: event loop
         :param str dbpath: database path
-        :param concurrent.futures.Executor executor: executor for sqlite operate
         """
         self._dbpath = dbpath
-        self._loop = loop
-        self._executor = executor
-
-    def _do(self, func, *args, **kwargs):
-        """
-        :param callable func: arrange func to be called in self._executor
-        :rtype: asyncio.Future
-        """
-        func = partial(func, *args, **kwargs)
-        future = self._loop.run_in_executor(self._executor, func)
-        return future
-
-    async def _connect(self):
-        """
-        :rtype: sqlite3.Connection
-        """
-        conn = await self._do(sqlite3.connect, self._dbpath, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    async def _commit(self, conn):
-        await self._do(conn.commit)
-
-    async def _rollback(self, conn):
-        await self._do(conn.rollback)
-
-    async def _close(self, conn):
-        await self._do(conn.close)
 
     @staticmethod
     def _prepare_conditions(conditions):
@@ -74,7 +44,15 @@ class DB:
         cdt_str = inner.join(cdt_arr)
         return cdt_str, tuple(cdt_value_arr)
 
-    async def insert(self, table, value_dict):
+    def _connect(self):
+        """
+        :rtype: sqlite3.Connection
+        """
+        conn = sqlite3.connect(self._dbpath, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def insert(self, table, value_dict):
         """
         INSERT INTO table (value_dict.keys()) VALUES (value_dict.values())
         :param str table: table to insert
@@ -88,25 +66,25 @@ class DB:
         v_tuple = tuple(value_dict.values())
         sql = 'INSERT INTO {} ({}) VALUES ({})'.format(table, k_tuple, qs)
 
-        conn = await self._connect()
+        conn = self._connect()
         try:
-            await self._do(conn.execute, sql, v_tuple)
-            await self._commit(conn)
+            conn.execute(sql, v_tuple)
+            conn.commit()
             result = True
         except Exception as e:
             print(e)
-            await self._rollback(conn)
+            conn.rollback()
         finally:
-            await self._close(conn)
+            conn.close()
             return result
 
-    async def select(self, columns, table, conditions, order_by=None, desc=False, limit=None, offset=None):
+    def select(self, columns, table, conditions, order_by=None, desc=False, limit=None, offset=None):
         """
         SELECT columns FROM table WHERE condition AND condition
         note that: columns should not be a string!
         :param tuple|list columns: if columns is (), [] or None, it will be translated to '*'.
         :param str table: table to select
-        :param list[tuple[str]] conditions: list of 3-tuple; ex: [('author', '=', 'jeff'), ('time', '<', datetime.now())]
+        :param list[tuple[str]] conditions: 3-tuple list; ex: [('author', '=', 'jeff'), ('time', '<', datetime.now())]
         :param str order_by: order by which column
         :param bool desc: desc
         :param int limit: limit number
@@ -132,19 +110,19 @@ class DB:
         if offset is not None:
             sql += ' OFFSET {}'.format(offset)
 
-        conn = await self._connect()
+        conn = self._connect()
         try:
             cursor = conn.cursor()
-            await self._do(cursor.execute, sql, cdt_value)
-            result = await self._do(cursor.fetchall)
+            cursor.execute(sql, cdt_value)
+            result = cursor.fetchall()
         except Exception as e:
             print(sql, '\n', e)
-            await self._rollback(conn)
+            conn.rollback()
         finally:
-            await self._close(conn)
+            conn.close()
             return result
 
-    async def update(self, table, value_dict, conditions):
+    def update(self, table, value_dict, conditions):
         """
         UPDATE table SET value_dict.keys() = value_dict.values() WHERE condition AND condition
         :param str table: table to update
@@ -163,19 +141,19 @@ class DB:
         else:
             sql = 'UPDATE {} SET {} WHERE {}'.format(table, value_str, cdt_str)
 
-        conn = await self._connect()
+        conn = self._connect()
 
         try:
-            await self._do(conn.execute, sql, value_tuple + cdt_value)
-            await self._commit(conn)
+            conn.execute(sql, value_tuple + cdt_value)
+            conn.commit()
             result = True
         except:
-            await self._rollback(conn)
+            conn.rollback()
         finally:
-            await self._close(conn)
+            conn.close()
             return result
 
-    async def delete(self, table, conditions):
+    def delete(self, table, conditions):
         """
         DELETE FROM table WHERE conditions
         :param str table: table to delete
@@ -192,15 +170,15 @@ class DB:
         else:
             sql = 'DELETE FROM {} WHERE {}'.format(table, cdt_str)
 
-        conn = await self._connect()
+        conn = self._connect()
         try:
-            await self._do(conn.execute, sql, cdt_value)
-            await self._commit(conn)
+            conn.execute(sql, cdt_value)
+            conn.commit()
             result = True
         except:
-            await self._rollback(conn)
+            conn.rollback()
         finally:
-            await self._close(conn)
+            conn.close()
             return result
 
 
@@ -210,12 +188,12 @@ class BlogDB(DB):
     :param list selection: columns to select in self.select_article and self.select_articles
     """
 
-    def __init__(self, loop, dbpath='blog.db', executor=None):
-        super(BlogDB, self).__init__(loop, dbpath, executor)
+    def __init__(self, dbpath='blog.db'):
+        super(BlogDB, self).__init__(dbpath)
         self.table_name = {'articles': 'articles', 'category': 'cat'}
         self.selection = []
 
-    async def add_article(self, slug, title, md_content, html_content, author, time=None):
+    def add_article(self, slug, title, md_content, html_content, author, time=None):
         """
         add an article into database
         :param str slug: slug
@@ -226,7 +204,7 @@ class BlogDB(DB):
         :param datetime.datetime time: time; if None, it will be datetime.datetime.now()
         :rtype: bool
         """
-        result = await self.insert(self.table_name['articles'], {
+        result = self.insert(self.table_name['articles'], {
             'slug': slug,
             'title': title,
             'md_content': md_content,
@@ -236,45 +214,46 @@ class BlogDB(DB):
         })
         return result
 
-    async def delete_article(self, slug):
+    def delete_article(self, slug):
         """
         delete an article
         :param str slug: slug of the article
         :rtype: bool
         """
-        result = await self.delete(self.table_name['articles'], [('slug', '=', slug)])
+        result = self.delete(self.table_name['articles'], [('slug', '=', slug)])
         return result
 
-    async def delete_articles(self, conditions):
+    def delete_articles(self, conditions):
         """
         delete articles
         :param list[tuple[str]] conditions: list of 3-tuple; ex: [('author', '=', 'jeff'), ('time', '<', '20160501')]
         :rtype: bool
         """
-        result = await self.delete(self.table_name['articles'], conditions)
+        result = self.delete(self.table_name['articles'], conditions)
         return result
 
-    async def update_article(self, value_dict, slug):
+    def update_article(self, value_dict, slug):
         """
         update an article
         :param dict value_dict: values to update
         :param str slug: slug of the article
         :rtype: bool
         """
-        result = await self.update(self.table_name['articles'], value_dict, [('slug', '=', slug)])
+        result = self.update(self.table_name['articles'], value_dict, [('slug', '=', slug)])
         return result
 
-    async def select_article(self, slug):
+    @lru_cache()
+    def select_article(self, slug):
         """
         :param str slug: slug of the article
         :rtype: sqlite3.Row|None
         """
-        result = await self.select(self.selection, self.table_name['articles'], [('slug', '=', slug)])
+        result = self.select(self.selection, self.table_name['articles'], [('slug', '=', slug)])
         if len(result) != 0:
             return result[0]
         return None
 
-    async def select_articles(self, conditions, limit=20, offset=None):
+    def select_articles(self, conditions, limit=20, offset=None):
         """
         :param list[tuple[str]] conditions: list of 3-tuple; ex: [('author', '=', 'jeff'), ('time', '<', '20160501')]
         :param int limit: limit number
@@ -283,11 +262,12 @@ class BlogDB(DB):
         """
         if offset == 0:
             offset = None
-        result = await self.select(self.selection, self.table_name['articles'], conditions,
-                                   order_by='time', desc=True, limit=limit, offset=offset)
+        result = self.select(self.selection, self.table_name['articles'], conditions,
+                             order_by='time', desc=True, limit=limit, offset=offset)
         return result
 
-    async def select_articles_by_time(self, begin=None, end=None, limit=20, page_num=0):
+    @lru_cache()
+    def select_articles_by_time(self, begin=None, end=None, limit=20, page_num=0):
         """
         :param datetime.datetime begin: begin *begin*
         :param datetime.datetime end: to *end*
@@ -300,20 +280,10 @@ class BlogDB(DB):
             conditions.append(('time', '>', begin))
         if end is not None:
             conditions.append(('time', '<', end))
-        result = await self.select_articles(conditions, limit, limit * page_num)
+        result = self.select_articles(conditions, limit, limit * page_num)
         return result
 
-    async def select_articles_by_category(self, cat_id, limit, page_num=0):
-        """
-        :param int cat_id: id of category
-        :param int limit: limit number
-        :param int page_num: page number
-        :rtype: list[sqlite3.Row]
-        """
-        result = await self.select_articles([('cat_id', '=', cat_id)], limit, limit * page_num)
-        return result
-
-    async def init(self):
+    def init(self):
         """
         :rtype: bool
         """
@@ -322,18 +292,19 @@ class BlogDB(DB):
                               '(id INTEGER PRIMARY KEY AUTOINCREMENT, slug CHAR(100) NOT NULL UNIQUE, ' + \
                               'title NCHAR(100) NOT NULL, md_content TEXT NOT NULL, html_content TEXT NOT NULL, ' + \
                               'author NCHAR(30) NOT NULL, time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)'
-        sqls.append(sql_create_articles);print(sqls)
+        sqls.append(sql_create_articles)
+        print(sqls)
 
         result = False
         for sql in sqls:
-            conn = await self._connect()
+            conn = self._connect()
             try:
-                await self._do(conn.execute(sql))
-                await self._commit(conn)
+                conn.execute(sql)
+                conn.commit()
                 result = True
             except Exception as e:
                 print(e)
-                await self._rollback(conn)
+                conn.rollback()
             finally:
-                await self._close(conn)
+                conn.close()
                 return result
