@@ -49,3 +49,16 @@ while from_datetime < to_datetime:
 
 # get article_num
 article_num = int(DEFAULT['article_num'])
+
+# get categories
+cat_names = []
+for name in DEFAULT['cat_names'].split('|'):
+    name = name.strip()
+    cat_names.append(name)
+
+cat_slugs = []
+for slug in DEFAULT['cat_slugs'].split('|'):
+    slug = slug.strip()
+    cat_slugs.append(slug)
+
+categories = {slug: name for slug, name in zip(cat_slugs, cat_names)}
