@@ -12,6 +12,13 @@
     <br>
     <label for="author">Author<input type="text" name="author" id="author"></label>
     <br>
+    <label for="cat">Category</label>
+    <select name="cat" id="cat">
+        {% for slug, name in cats.items() %}
+            <option value="{{ escape(slug) }}">{{ escape(name) }}</option>
+        {% end %}
+    </select>
+    <br>
     <button id="btn">Submit</button>
 </div>
 <script src="/static/js/jquery.min.js"></script>
@@ -23,7 +30,8 @@
             data: {
                 slug: $("#slug").val(),
                 title: $("#title").val(),
-                author: $("#author").val()
+                author: $("#author").val(),
+                cat: $("#cat").val()
             },
             success: function(data){
                 if(data=='success')

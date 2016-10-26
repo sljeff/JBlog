@@ -65,9 +65,33 @@ class TimeHandler(BaseHandler):
         self.render('articles.html', **category_options, **self.application.opts)
 
 
+class CatHandler(BaseHandler):
+    def get(self, cat_slug, page_num=0):
+        page_num = int(page_num)
+        d = self.application.database
+        rows = d.select_articles_by_cat(cat_slug, self.application.article_num, page_num)
+        archives = []
+        next_link = None
+        pre_link = page_num - 1 if page_num > 0 else None
+        if rows:
+            for row in rows:
+                title = row['title']
+                overview = get_overview(row['html_content'])
+                archives.append({'title': title, 'overview': overview, 'slug': row['slug']})
+            next_link = page_num + 1 if len(rows) >= 20 else None
+        page_title = self.application.opts['cats'][cat_slug]
+        category_options = {
+            'archives': archives,
+            'preLink': pre_link,
+            'nextLink': next_link,
+            'pageTitle': self.application.get_site_title(page_title)
+        }
+        self.render('articles.html', **category_options, **self.application.opts)
+
+
 class AddHandler(BaseHandler):
     def get(self):
-        self.render('add.html')
+        self.render('add.html', cats=self.application.opts['cats'])
 
     async def post(self):
         slug = self.get_body_arguments('slug')[0]  # type: str
@@ -81,17 +105,19 @@ class AddHandler(BaseHandler):
         try:
             title = self.get_body_arguments('title')[0]
             author = self.get_body_arguments('author')[0]
+            cat = self.get_body_arguments('cat')[0]
             time = datetime.datetime.now()
         except:
             self.write('wrong value')
             return
 
         d = self.application.database
-        result = await self.application.loop.run_in_executor(None, d.add_article, slug, title, md_content, html_content,
-                                                       author, time)
+        result = await self.application.loop.run_in_executor(None, d.add_article, slug, title, cat, md_content, html_content,
+                                                             author, time)
         if result:
             # clear cache
             d.select_article.cache_clear()
+            d.select_articles_by_cat.cache_clear()
             d.select_articles_by_time.cache_clear()
             self.write('success')
         else:

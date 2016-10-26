@@ -44,7 +44,7 @@ class DB:
         cdt_str = inner.join(cdt_arr)
         return cdt_str, tuple(cdt_value_arr)
 
-    def _connect(self):
+    def connect(self):
         """
         :rtype: sqlite3.Connection
         """
@@ -66,7 +66,7 @@ class DB:
         v_tuple = tuple(value_dict.values())
         sql = 'INSERT INTO {} ({}) VALUES ({})'.format(table, k_tuple, qs)
 
-        conn = self._connect()
+        conn = self.connect()
         try:
             conn.execute(sql, v_tuple)
             conn.commit()
@@ -110,7 +110,7 @@ class DB:
         if offset is not None:
             sql += ' OFFSET {}'.format(offset)
 
-        conn = self._connect()
+        conn = self.connect()
         try:
             cursor = conn.cursor()
             cursor.execute(sql, cdt_value)
@@ -141,7 +141,7 @@ class DB:
         else:
             sql = 'UPDATE {} SET {} WHERE {}'.format(table, value_str, cdt_str)
 
-        conn = self._connect()
+        conn = self.connect()
 
         try:
             conn.execute(sql, value_tuple + cdt_value)
@@ -170,7 +170,7 @@ class DB:
         else:
             sql = 'DELETE FROM {} WHERE {}'.format(table, cdt_str)
 
-        conn = self._connect()
+        conn = self.connect()
         try:
             conn.execute(sql, cdt_value)
             conn.commit()
@@ -190,26 +190,29 @@ class BlogDB(DB):
 
     def __init__(self, dbpath='blog.db'):
         super(BlogDB, self).__init__(dbpath)
-        self.table_name = {'articles': 'articles', 'category': 'cat'}
+        self.table_name = {'articles': 'articles', 'category': 'cats'}
         self.selection = []
 
-    def add_article(self, slug, title, md_content, html_content, author, time=None):
+    def add_article(self, slug, title, cat_slug, md_content, html_content, author, time=None):
         """
         add an article into database
         :param str slug: slug
         :param str title: title
+        :param str cat_slug: category
         :param str md_content: markdown content of article
         :param str html_content: html content of article
         :param str author: author
         :param datetime.datetime time: time; if None, it will be datetime.datetime.now()
         :rtype: bool
         """
+        cat_id = self.get_id_by_slug(cat_slug)
         result = self.insert(self.table_name['articles'], {
             'slug': slug,
             'title': title,
             'md_content': md_content,
             'html_content': html_content,
             'author': author,
+            'cat_id': cat_id,
             'time': time or datetime.datetime.now()
         })
         return result
@@ -241,6 +244,11 @@ class BlogDB(DB):
         """
         result = self.update(self.table_name['articles'], value_dict, [('slug', '=', slug)])
         return result
+
+    @lru_cache()
+    def get_id_by_slug(self, slug):
+        result = self.select([], self.table_name['category'], [('slug', '=', slug)])
+        return int(result[0]['id']) if result else None
 
     @lru_cache()
     def select_article(self, slug):
@@ -283,28 +291,16 @@ class BlogDB(DB):
         result = self.select_articles(conditions, limit, limit * page_num)
         return result
 
-    def init(self):
+    @lru_cache()
+    def select_articles_by_cat(self, cat_slug, limit=20, page_num=0):
         """
-        :rtype: bool
+        :param str cat_slug: category name
+        :param int limit: limit number
+        :param int page_num: page number
+        :return: list[sqlite3.Row]
         """
-        sqls = []
-        sql_create_articles = 'CREATE TABLE {} '.format(self.table_name['articles']) + \
-                              '(id INTEGER PRIMARY KEY AUTOINCREMENT, slug CHAR(100) NOT NULL UNIQUE, ' + \
-                              'title NCHAR(100) NOT NULL, md_content TEXT NOT NULL, html_content TEXT NOT NULL, ' + \
-                              'author NCHAR(30) NOT NULL, time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)'
-        sqls.append(sql_create_articles)
-        print(sqls)
-
-        result = False
-        for sql in sqls:
-            conn = self._connect()
-            try:
-                conn.execute(sql)
-                conn.commit()
-                result = True
-            except Exception as e:
-                print(e)
-                conn.rollback()
-            finally:
-                conn.close()
-                return result
+        cat_id = self.get_id_by_slug(cat_slug)
+        result = None
+        if cat_id:
+            result = self.select_articles([('cat_id', '=', cat_id)], limit, limit * page_num)
+        return result

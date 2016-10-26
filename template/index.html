@@ -15,6 +15,14 @@
     <div id="blogName"><a href="/">{{ blogName }}</a></div>
     <div id="fAdd1"></div>
     <div id="fAdd2"></div>
+    <div id="cat">
+        <div class="categoryTitle">分类</div>
+        <div class="list">
+            {% for slug, name in cats.items() %}
+                <a href="/c/{{ escape(slug) }}/0">{{ escape(name) }}</a>
+            {% end %}
+        </div>
+    </div>
     <div id="date">
         <div class="categoryTitle">日期归档</div>
         <div class="list">
