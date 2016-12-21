@@ -53,8 +53,7 @@ a#nextPage{
     display:block;
   }
   #fAdd1{
-    width:298px;
-    height:52px;
+    font-size: 0.8em;
   }
   #lastDiv{
     background-color: rgba(0,82,156,0.2);
@@ -80,6 +79,9 @@ a#nextPage{
     margin: 10%;
   }
   #lAdd1{
+    margin: 10%;
+  }
+  #lAdd2{
     margin: 10%;
   }
 

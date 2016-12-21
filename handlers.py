@@ -101,7 +101,7 @@ class AddHandler(BaseHandler):
             return
         with open(md_file_name, 'r', encoding='utf-8') as f:
             md_content = await self.application.loop.run_in_executor(None, f.read)
-            html_content = markdown2.markdown(md_content)
+            html_content = markdown2.markdown(md_content, extras=['fenced-code-blocks'])
         try:
             title = self.get_body_arguments('title')[0]
             author = self.get_body_arguments('author')[0]
